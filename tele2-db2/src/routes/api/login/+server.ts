@@ -1,6 +1,9 @@
 import { db } from '$lib/server/db';
 import { user } from '$lib/server/db/schema.js';
 import { eq } from 'drizzle-orm';
+import jwt from 'jsonwebtoken';
+import { PRIVATE_JWT_SECRET } from '$env/static/private';
+
 
 export async function POST({ request, cookies }) {
   const { username, password } = await request.json();
@@ -18,18 +21,15 @@ export async function POST({ request, cookies }) {
     });
   }
 
-  // MIDLOERTIG: Sammenlign klartekst (uden hash)
-  const isPasswordValid = password === userData.password;
-  console.log('Kodeord korrekt?', isPasswordValid);
+  // Opret JWT token
+  const token = jwt.sign(
+    { id: userData.id, username },
+    PRIVATE_JWT_SECRET,
+    { expiresIn: '1h' }
+  );
 
-  if (!isPasswordValid) {
-    return new Response(JSON.stringify({ error: 'Invalid password' }), {
-      status: 401
-    });
-  }
-
-  // Sæt cookie med bruger-ID
-  cookies.set('session', userData.id.toString(), {
+  // Gem token som en cookie
+  cookies.set('session', token, {
     path: '/',
     httpOnly: true,
     maxAge: 60 * 60 // 1 time
