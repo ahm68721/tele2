@@ -1,8 +1,22 @@
 <script>
-	import { createSubscriber } from 'svelte/reactivity';
+	import Title from '$lib/components/Title.svelte';
+	import Link from '$lib/components/Link.svelte';
+	import H1 from '$lib/components/H1.svelte';
+	import { onMount } from 'svelte';
 
 	let username = $state('user');
 	let password = $state('password');
+	let users = $state([]);
+
+	const getAllUsers = async () => {
+		const response = await fetch('/api/user');
+		const data = await response.json();
+		if (response.ok) {
+			users = data;
+		} else {
+			alert('Fejl ved hentning af brugere!');
+		}
+	};
 
 	const createUser = async () => {
 		const response = await fetch('/api/user', {
@@ -21,29 +35,57 @@
 		username = '';
 		password = '';
 	};
+
+	onMount(() => {
+		getAllUsers();
+	});
 </script>
 
-<div class="max-w-md mx-auto mt-10 p-6 bg-base-200 rounded-lg shadow-md">
-	<h1 class="text-2xl font-bold mb-4">Den hemmelige administratorside</h1>
+<div class="flex justify-center items-center min-h-screen">
+	<div class="w-full max-w-md p-4 text-center">
+		<!-- Nu er titlen inde i centreret container -->
+		<Title>Administration</Title>
 
-	<input
-		type="text"
-		bind:value={username}
-		placeholder="Brugernavn"
-		class="input input-bordered mb-3 w-full"
-	/>
+		<div class="my-4">
+			<H1>Brugeradministration</H1>
+			<p>Her kan du oprette nye brugere til systemet.</p>
+		</div>
 
-	<input
-		type="password"
-		bind:value={password}
-		placeholder="Adgangskode"
-		class="input input-bordered mb-4 w-full"
-	/>
+		<div class="mb-4">
+			<input
+				id="username"
+				type="text"
+				bind:value={username}
+				placeholder="Indtast brugernavn"
+				class="input input-bordered w-full"
+			/>
+		</div>
 
-	<button
-		class="btn btn-primary w-full"
-		on:click={createUser}
-	>
-		Opret bruger
-	</button>
+		<div class="mb-4">
+			<input
+				id="password"
+				type="password"
+				bind:value={password}
+				placeholder="Indtast adgangskode"
+				class="input input-bordered w-full"
+			/>
+		</div>
+
+		<div class="mb-8">
+			<button class="btn btn-primary w-full" onclick={createUser}>Opret ny bruger</button>
+		</div>
+
+		<H1>Brugere i systemet</H1>
+		<ul class="list rounded-box shadow-md text-left mt-4">
+			{#each users as user}
+				<li class="list-row p-2 border-b border-gray-200">
+					<p><a href={'users/' + user.id}> {user.username}</a></p>
+				</li>
+			{/each}
+		</ul>
+
+		<div class="mt-6">
+			<Link href="/diary">Tilbage til dagbog</Link>
+		</div>
+	</div>
 </div>

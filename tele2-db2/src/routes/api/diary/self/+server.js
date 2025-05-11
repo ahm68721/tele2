@@ -3,28 +3,41 @@ import { diaryPost } from '$lib/server/db/schema.js';
 import { eq } from 'drizzle-orm';
 import { json } from '@sveltejs/kit';
 
-export async function GET({ request }) {
-  const userId = request.user.id;
+export async function POST({ request }) {
+	const userId = request.user.id;
+	const { title, content } = await request.json();
 
-  const posts = await db.query.diaryPost.findMany({
-    where: eq(diaryPost.user_id, userId)
-  });
+	// Indsæt det nye indlæg
+	const inserted = await db
+		.insert(diaryPost)
+		.values({
+			user_id: userId,
+			title,
+			content
+		})
+		.returning();
 
-  return json(posts); // Returner dagbogsposter som JSON
+	const newPostId = inserted[0].id;
+
+	// Hent det komplette indlæg inkl. created_at
+	const fullPost = await db.query.diaryPost.findFirst({
+		where: eq(diaryPost.id, newPostId)
+	});
+
+	return json(fullPost, { status: 201 });
 }
 
-export async function POST({ request }) {
-  const userId = request.user.id;
-  const { title, content } = await request.json();
+export async function GET({ cookies }) {
+	const session = cookies.get('session');
+	if (!session) {
+		return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+	}
 
-  const newPosts = await db
-    .insert(diaryPost)
-    .values({
-      user_id: userId,
-      title,
-      content
-    })
-    .returning();
+	const { id: userId } = JSON.parse(atob(session.split('.')[1])); // JWT payload
 
-  return json(newPosts[0], { status: 201 });
+	const posts = await db.query.diaryPost.findMany({
+		where: eq(diaryPost.user_id, userId)
+	});
+
+	return json(posts);
 }
